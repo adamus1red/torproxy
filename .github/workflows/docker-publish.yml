@@ -7,8 +7,6 @@ name: Publish to Docker Hub
 on:
   schedule:
     - cron: '0 10 1,15 * *' # every two weeks at 10am to update latest
-    - cron: '0 0 * * *' # Nightly build
-
   push:
     branches: [ master ]
     tags:
@@ -18,7 +16,9 @@ on:
       tag:
         required: true
         default: latest
-    
+env:
+  default_platforms: linux/amd64,linux/386,linux/arm64,linux/ppc64le,linux/arm/v7,linux/arm/v6
+  
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
   # This workflow contains a single job called "build"
@@ -81,7 +81,7 @@ jobs:
         uses: docker/build-push-action@v2
         with:
           context: .
-          push: ${{ github.event_name != 'pull_request' }}
+          push: ${{ github.event_name != 'pull_request' ||  github.event_name != 'schedule' || github.event_name != 'workflow_dispatch' }}
           tags: ${{ steps.meta.outputs.tags }}
           platforms: ${{ env.default_platforms }}
           labels: |
@@ -90,7 +90,28 @@ jobs:
             org.opencontainers.image.revision=${{ github.sha }}
             
       - name: Build latest
+        if: github.event_name == 'schedule'
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ secrets.DOCKER_IMAGE }}:latest
+          platforms: ${{ env.default_platforms }}
+          labels: |
+            org.opencontainers.image.source=${{ github.event.repository.html_url }}
+            org.opencontainers.image.created=${{ steps.prep.outputs.created }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            
+      - name: Build latest
         if: github.event_name == 'workflow_dispatch'
-        run: |
-          docker build -t ${{ secrets.DOCKER_IMAGE }}:${{ github.event.inputs.tag }} --push --platform linux/amd64,linux/386,linux/arm64,linux/ppc64le,linux/arm/v7,linux/arm/v6 .
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ secrets.DOCKER_IMAGE }}:${{ github.event.inputs.tag }}
+          platforms: ${{ env.default_platforms }}
+          labels: |
+            org.opencontainers.image.source=${{ github.event.repository.html_url }}
+            org.opencontainers.image.created=${{ steps.prep.outputs.created }}
+            org.opencontainers.image.revision=${{ github.sha }}
 
