@@ -76,20 +76,19 @@ jobs:
             type=semver,pattern={{major}}.{{minor}},prefix=v
             type=semver,pattern={{major}},prefix=v
             type=sha
-      -
-        name: Inspect Tags
-        run: IFS=', ' read -r -a tags <<< "${{ steps.meta.outputs.tags }}"; for tag in ${tags[@]}; do echo $tag; done
-        
-      - name: Build for tags
-        if: github.event.schedule != '0 10 1,15 * *'
-        run: |
-          IFS=', ' read -r -a tags <<< "${{ steps.meta.outputs.tags }}"; for tag in ${tags[@]}; do docker build -t ${tag} --push --platform linux/amd64,linux/386,linux/arm64,linux/ppc64le,linux/arm/v7,linux/arm/v6 .; done
 
-      - name: Build latest
-        if: github.event.schedule == '0 10 1,15 * *'
-        run: |
-          docker build -t ${{ secrets.DOCKER_IMAGE }}:latest --push --platform linux/amd64,linux/386,linux/arm64,linux/ppc64le,linux/arm/v7,linux/arm/v6 .
-
+      - name: Build and push
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          platforms: ${{ env.default_platforms }}
+          labels: |
+            org.opencontainers.image.source=${{ github.event.repository.html_url }}
+            org.opencontainers.image.created=${{ steps.prep.outputs.created }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            
       - name: Build latest
         if: github.event_name == 'workflow_dispatch'
         run: |
