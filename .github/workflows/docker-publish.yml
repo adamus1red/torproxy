@@ -17,7 +17,7 @@ on:
         required: true
         default: latest
 env:
-  default_platforms: linux/amd64,linux/386,linux/arm64,linux/ppc64le,linux/arm/v7,linux/arm/v6
+  default_platforms: linux/amd64,linux/386,linux/arm64,linux/arm/v7,linux/arm/v6
   
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
